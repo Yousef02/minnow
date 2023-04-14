@@ -1,77 +1,98 @@
-#include <stdexcept>
-
 #include "byte_stream.hh"
+#include <iostream>
+#include <queue>
+#include <stdexcept>
+#include <string_view>
 
 using namespace std;
 
-ByteStream::ByteStream( uint64_t capacity ) : capacity_( capacity ) {}
+ByteStream::ByteStream( uint64_t capacity ) : capacity_( capacity ), streamStack() {}
 
 void Writer::push( string data )
 {
-  // Your code here.
-  (void)data;
+  // Keep pushing chars as long as we have space
+  for ( char c : data ) {
+    if ( trackCap >= capacity_ ) {
+      break;
+    }
+    streamStack.push( c );
+    popped = false;
+    trackCap += 1;
+    numPushed += 1;
+  }
 }
 
 void Writer::close()
 {
-  // Your code here.
+  streamClosed = true;
 }
 
 void Writer::set_error()
 {
-  // Your code here.
+  errorSig = true;
 }
 
 bool Writer::is_closed() const
 {
-  // Your code here.
-  return {};
+  if ( streamClosed ) {
+    return true;
+  }
+  return false;
 }
 
 uint64_t Writer::available_capacity() const
 {
-  // Your code here.
-  return {};
+  return capacity_ - trackCap;
 }
 
 uint64_t Writer::bytes_pushed() const
 {
-  // Your code here.
-  return {};
+  return numPushed;
 }
 
-string_view Reader::peek() const
+std::string_view Reader::peek() const
 {
-  // Your code here.
-  return {};
+  if ( !streamStack.empty() ) {
+    return std::string_view( &streamStack.front(), 1 );
+  } else {
+    return std::string_view();
+  }
 }
 
 bool Reader::is_finished() const
 {
-  // Your code here.
-  return {};
+  if ( streamClosed && popped ) {
+    return true;
+  }
+  return false;
 }
 
 bool Reader::has_error() const
 {
-  // Your code here.
-  return {};
+  if ( errorSig ) {
+    return true;
+  }
+  return false;
 }
 
 void Reader::pop( uint64_t len )
 {
-  // Your code here.
-  (void)len;
+  for ( uint64_t i = 0; i < len; i++ ) {
+    streamStack.pop();
+    trackCap -= 1;
+    numPopped += 1;
+  }
+  if ( streamStack.empty() ) {
+    popped = true;
+  }
 }
 
 uint64_t Reader::bytes_buffered() const
 {
-  // Your code here.
-  return {};
+  return streamStack.size();
 }
 
 uint64_t Reader::bytes_popped() const
 {
-  // Your code here.
-  return {};
+  return numPopped;
 }

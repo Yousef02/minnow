@@ -4,7 +4,6 @@
 #include <stdexcept>
 #include <string>
 #include <string_view>
-
 class Reader;
 class Writer;
 
@@ -12,7 +11,13 @@ class ByteStream
 {
 protected:
   uint64_t capacity_;
-  // Please add any additional state to the ByteStream here, and not to the Writer and Reader interfaces.
+  std::queue<char> streamStack; // Our ByteStream
+  uint64_t trackCap = 0;        // How many bytes currently in the byte stream
+  bool streamClosed = false;
+  bool popped = true; // Fully free stream
+  uint64_t numPopped = 0;
+  uint64_t numPushed = 0;
+  bool errorSig = false; // track errors signaled
 
 public:
   explicit ByteStream( uint64_t capacity );
