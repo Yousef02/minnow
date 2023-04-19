@@ -96,6 +96,67 @@ int main()
 
       test.execute( ReadAll( "c" ) );
     }
+    {
+      ReassemblerTestHarness test { "me1", 65000 };
+
+      test.execute( Insert { "cdefg", 2 } );
+      test.execute( BytesPushed( 0 ) );
+
+      test.execute( Insert { "abcd", 0 } );
+      test.execute( BytesPushed( 7 ) );
+    }
+    {
+      ReassemblerTestHarness test { "me2", 20 };
+
+      test.execute( Insert { "defg", 3 } );
+      test.execute( BytesPushed( 0 ) );
+      test.execute( BytesPending( 4 ) );
+
+      test.execute( Insert { "defgh", 3 } );
+      test.execute( BytesPushed( 0 ) );
+      test.execute( BytesPending( 5 ) );
+
+      test.execute( Insert { "defghi", 3 } );
+      test.execute( BytesPushed( 0 ) );
+      test.execute( BytesPending( 6 ) );
+
+      test.execute( Insert { "cdefghi", 2 } );
+      test.execute( BytesPushed( 0 ) );
+      test.execute( BytesPending( 7 ) );
+
+      test.execute( Insert { "cdefgh", 2 } );
+      test.execute( BytesPushed( 0 ) );
+      test.execute( BytesPending( 7 ) );
+
+      test.execute( Insert { "bcdef", 1 } );
+      test.execute( BytesPushed( 0 ) );
+      test.execute( BytesPending( 8 ) );
+
+      test.execute( Insert { "cdef", 2 } );
+      test.execute( BytesPushed( 0 ) );
+      test.execute( BytesPending( 8 ) );
+
+      test.execute( Insert { "abc", 0 } );
+      test.execute( BytesPushed( 9 ) );
+      test.execute( BytesPending( 0 ) );
+
+      test.execute( ReadAll( "abcdefghi" ) );
+    }
+    {
+      ReassemblerTestHarness test { "me3", 20 };
+
+      test.execute( Insert { "cd", 2 } );
+      test.execute( BytesPushed( 0 ) );
+      test.execute( BytesPending( 2 ) );
+
+      test.execute( Insert { "fghijk", 6 } );
+      test.execute( BytesPushed( 0 ) );
+      test.execute( BytesPending( 8 ) );
+
+      test.execute( Insert { "efgh", 5 } );
+      test.execute( BytesPushed( 0 ) );
+      test.execute( BytesPending( 9 ) );
+    }
 
   } catch ( const exception& e ) {
     cerr << "Exception: " << e.what() << endl;

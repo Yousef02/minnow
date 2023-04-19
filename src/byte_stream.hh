@@ -11,10 +11,8 @@ class ByteStream
 {
 protected:
   uint64_t capacity_;
-  std::queue<char> streamStack; // Our ByteStream
-  uint64_t trackCap = 0;        // How many bytes currently in the byte stream
+  std::queue<std::string> streamStack; // Our ByteStream
   bool streamClosed = false;
-  bool popped = true; // Fully free stream
   uint64_t numPopped = 0;
   uint64_t numPushed = 0;
   bool errorSig = false; // track errors signaled

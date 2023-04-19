@@ -4,6 +4,10 @@
 
 #include <string>
 
+#include <iostream>
+#include <set>
+#include <string>
+
 class Reassembler
 {
 public:
@@ -27,11 +31,20 @@ public:
    *
    * The Reassembler should close the stream after writing the last byte.
    */
+  Reassembler();
+
   void insert( uint64_t first_index, std::string data, bool is_last_substring, Writer& output );
-  uint64_t first_unpopped_ind = 0;
-  uint64_t first_unassembeled_ind = 0;
-  uint64_t first_unacceptable_ind = 0;
-  
+  struct Element
+  {
+    uint64_t index;
+    std::string data;
+
+    bool operator<( const Element& other ) const { return index < other.index; }
+  };
+
+  std::set<Element> ourSet;
+  uint64_t setSize = 0;
+  bool seenLast = false;
 
   // How many bytes are stored in the Reassembler itself?
   uint64_t bytes_pending() const;

@@ -10,15 +10,12 @@ ByteStream::ByteStream( uint64_t capacity ) : capacity_( capacity ), streamStack
 
 void Writer::push( string data )
 {
-  // Keep pushing chars as long as we have space
-  for ( char c : data ) {
-    if ( trackCap >= capacity_ ) {
-      break;
-    }
-    streamStack.push( c );
-    popped = false;
-    trackCap += 1;
-    numPushed += 1;
+  if ( !data.empty() && data.length() <= available_capacity() ) {
+    streamStack.push( data );
+    numPushed += data.length();
+  } else if ( !data.empty() ) {
+    streamStack.push( data.substr( 0, available_capacity() ) );
+    numPushed += available_capacity();
   }
 }
 
@@ -42,7 +39,7 @@ bool Writer::is_closed() const
 
 uint64_t Writer::available_capacity() const
 {
-  return capacity_ - trackCap;
+  return capacity_ - ( numPushed - numPopped );
 }
 
 uint64_t Writer::bytes_pushed() const
@@ -53,7 +50,7 @@ uint64_t Writer::bytes_pushed() const
 std::string_view Reader::peek() const
 {
   if ( !streamStack.empty() ) {
-    return std::string_view( &streamStack.front(), 1 );
+    return string_view { streamStack.front().data(), streamStack.front().length() };
   } else {
     return std::string_view();
   }
@@ -61,7 +58,7 @@ std::string_view Reader::peek() const
 
 bool Reader::is_finished() const
 {
-  if ( streamClosed && popped ) {
+  if ( streamClosed && streamStack.empty() ) {
     return true;
   }
   return false;
@@ -77,19 +74,20 @@ bool Reader::has_error() const
 
 void Reader::pop( uint64_t len )
 {
-  for ( uint64_t i = 0; i < len; i++ ) {
+  while ( !streamStack.empty() && len >= streamStack.front().length() ) {
+    len -= streamStack.front().length();
+    numPopped += streamStack.front().length();
     streamStack.pop();
-    trackCap -= 1;
-    numPopped += 1;
   }
-  if ( streamStack.empty() ) {
-    popped = true;
+  if ( !streamStack.empty() && len > 0 ) {
+    streamStack.front() = streamStack.front().substr( len );
+    numPopped += len;
   }
 }
 
 uint64_t Reader::bytes_buffered() const
 {
-  return streamStack.size();
+  return numPushed - numPopped;
 }
 
 uint64_t Reader::bytes_popped() const
