@@ -32,7 +32,9 @@ void Reassembler::insert( uint64_t first_index, string data, bool is_last_substr
 
   // if the data ends past the last acceptable byte
   if ( adjusted_first_index + data.length() - 1 > first_unass_ind + output.available_capacity() ) {
-    data = data.substr( 0, output.available_capacity() - adjusted_first_index );
+    data = data.substr(
+      0, output.available_capacity() ); // BIGGG NOTEE: THIS WAS output.available_capacity() - adjusted_first_index,
+                                        // but I edited it while doing recv-window
   }
 
   Element to_insert = { adjusted_first_index, data };

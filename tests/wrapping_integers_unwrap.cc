@@ -36,6 +36,9 @@ int main()
     // Nearly big unwrap with non-zero ISN
     test_should_be( Wrap32( UINT32_MAX ).unwrap( Wrap32( 1UL << 31 ), 0 ),
                     static_cast<uint64_t>( UINT32_MAX ) >> 1 );
+
+    test_should_be( Wrap32( 746340606 ).unwrap( Wrap32( 218152385 ), 6145506146304885566 ),
+                    static_cast<uint64_t>( 6145506148452369213 ) );
   } catch ( const exception& e ) {
     cerr << e.what() << endl;
     return 1;
