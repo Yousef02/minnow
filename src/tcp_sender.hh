@@ -3,6 +3,7 @@
 #include "byte_stream.hh"
 #include "tcp_receiver_message.hh"
 #include "tcp_sender_message.hh"
+#include <queue>
 
 class TCPSender
 {
@@ -10,6 +11,10 @@ class TCPSender
   uint64_t initial_RTO_ms_;
 
 public:
+  std::queue<TCPSenderMessage> pushQueue;
+  std::queue<TCPSenderMessage> outStanding;
+  uint64_t lastAcked = 0;
+  uint64_t windowSize = 1;
   /* Construct TCP sender with given default Retransmission Timeout and possible ISN */
   TCPSender( uint64_t initial_RTO_ms, std::optional<Wrap32> fixed_isn );
 

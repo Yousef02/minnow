@@ -7,7 +7,7 @@ using namespace std;
 
 /* TCPSender constructor (uses a random ISN if none given) */
 TCPSender::TCPSender( uint64_t initial_RTO_ms, optional<Wrap32> fixed_isn )
-  : isn_( fixed_isn.value_or( Wrap32 { random_device()() } ) ), initial_RTO_ms_( initial_RTO_ms )
+  : isn_( fixed_isn.value_or( Wrap32 { random_device()() } ) ), initial_RTO_ms_( initial_RTO_ms ), pushQueue(), outStanding()
 {}
 
 uint64_t TCPSender::sequence_numbers_in_flight() const
@@ -30,8 +30,31 @@ optional<TCPSenderMessage> TCPSender::maybe_send()
 
 void TCPSender::push( Reader& outbound_stream )
 {
-  // Your code here.
-  (void)outbound_stream;
+  Wrap32 seqno = isn_ + outbound_stream.bytes_popped() + 1;
+  bool syn;
+  bool fin;
+  Buffer payload;
+  if (outbound_stream.bytes_popped() == 0) {
+    syn = true;
+    seqno + -1;
+  }
+  string my_buffer;
+  while (outbound_stream.bytes_buffered() > 0 && windowSize > 0) {
+    string_view peeked = outbound_stream.peek();
+    my_buffer += ((std::string(peeked)));
+    outbound_stream.pop(peeked.length());
+  }
+  Buffer payload = Buffer(my_buffer);
+  if (outbound_stream.is_finished()) {
+    fin = true;
+    syn = false;
+    Buffer emptyPayload = Buffer();
+    TCPSenderMessage finMessage = {seqno, syn, emptyPayload, fin};
+  }
+
+  // If the stream is finished send an empty message with the FIN, for Syn, just incrememnt the seqno
+  // the syn flag message itself should not have one added to it, but stuff after should
+
 }
 
 TCPSenderMessage TCPSender::send_empty_message() const
