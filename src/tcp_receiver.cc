@@ -5,13 +5,16 @@ using namespace std;
 void TCPReceiver::receive( TCPSenderMessage message, Reassembler& reassembler, Writer& inbound_stream )
 {
   uint64_t toinsert = 0;
+
   if ( message.SYN ) {
     isn = message.seqno;
   }
   if ( !isn.has_value() ) {
     return;
+
   } else {
-    uint64_t abs_seqno = message.seqno.unwrap( isn.value(), inbound_stream.bytes_pushed() + 1 );
+    uint64_t abs_seqno = message.seqno.unwrap( isn.value(), inbound_stream.bytes_pushed() ); //Maybe + 1
+    // If we are just starting, we need to insert the payload at stream index 0 (same as abs_seqno of SYN)
     if ( message.sequence_length() > 0 && message.SYN ) {
       toinsert = abs_seqno;
     } else {

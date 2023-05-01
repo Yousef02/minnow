@@ -3,8 +3,7 @@ using namespace std;
 
 Wrap32 Wrap32::wrap( uint64_t n, Wrap32 zero_point )
 {
-  uint32_t t = static_cast<uint32_t>( ( n + zero_point.raw_value_ ) % ( 1ULL << 32 ) );
-  return Wrap32 { t };
+  return Wrap32 {static_cast<uint32_t>( ( n + zero_point.raw_value_ ))};
 }
 
 uint64_t Wrap32::unwrap( Wrap32 zero_point, uint64_t checkpoint ) const
@@ -15,9 +14,6 @@ uint64_t Wrap32::unwrap( Wrap32 zero_point, uint64_t checkpoint ) const
   // Compute the number of times the wraparound occurred between the zero point and this value
   uint64_t wraps = ( checkpoint ) / UINT32_MAX;
 
-  if ( wraps == 0 ) {
-    wraps = 1;
-  }
   uint64_t upper = diff + ( wraps * ( uint64_t( 1 ) << 32 ) );
   uint64_t lower = diff + ( ( wraps - 1 ) * ( uint64_t( 1 ) << 32 ) );
   if ( upper < checkpoint ) {
@@ -33,6 +29,5 @@ uint64_t Wrap32::unwrap( Wrap32 zero_point, uint64_t checkpoint ) const
   } else {
     result = lower;
   }
-
   return result;
 }

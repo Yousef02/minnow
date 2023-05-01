@@ -44,7 +44,7 @@ void TCPSender::push( Reader& outbound_stream )
     my_buffer += ((std::string(peeked)));
     outbound_stream.pop(peeked.length());
   }
-  Buffer payload = Buffer(my_buffer);
+  payload = Buffer(my_buffer);
   if (outbound_stream.is_finished()) {
     fin = true;
     syn = false;
