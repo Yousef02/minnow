@@ -4,6 +4,7 @@
 #include "tcp_receiver_message.hh"
 #include "tcp_sender_message.hh"
 #include <queue>
+#include <map>
 
 class TCPSender
 {
@@ -11,10 +12,11 @@ class TCPSender
   uint64_t initial_RTO_ms_;
 
 public:
-  std::queue<TCPSenderMessage> pushQueue;
-  std::queue<TCPSenderMessage> outStanding;
+  std::map<uint64_t, TCPSenderMessage> pushMap;
+  std::map<uint64_t, TCPSenderMessage> outStandingMap;
   uint64_t lastAcked = 0;
   uint64_t windowSize = 1;
+  uint64_t seqno_ = 0;
   /* Construct TCP sender with given default Retransmission Timeout and possible ISN */
   TCPSender( uint64_t initial_RTO_ms, std::optional<Wrap32> fixed_isn );
 
