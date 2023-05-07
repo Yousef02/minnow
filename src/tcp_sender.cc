@@ -30,27 +30,34 @@ optional<TCPSenderMessage> TCPSender::maybe_send()
 
 void TCPSender::push( Reader& outbound_stream )
 {
-  Wrap32 seqno = isn_ + outbound_stream.bytes_popped() + 1;
-  bool syn;
-  bool fin;
+  Wrap32 seqno = isn_ + outbound_stream.bytes_popped();
+  bool syn = false;
+  bool fin = false;
   Buffer payload;
+  TCPSenderMessage toPush;
+
   if (outbound_stream.bytes_popped() == 0) {
     syn = true;
-    seqno + -1;
-  }
+  } 
+
   string my_buffer;
   while (outbound_stream.bytes_buffered() > 0 && windowSize > 0) {
     string_view peeked = outbound_stream.peek();
     my_buffer += ((std::string(peeked)));
     outbound_stream.pop(peeked.length());
   }
+
   payload = Buffer(my_buffer);
+  toPush = {seqno, syn, payload, fin};
+
   if (outbound_stream.is_finished()) {
     fin = true;
     syn = false;
     Buffer emptyPayload = Buffer();
-    TCPSenderMessage finMessage = {seqno, syn, emptyPayload, fin};
+    toPush = {seqno, syn, emptyPayload, fin};
   }
+
+  pushQueue.push(toPush);
 
   // If the stream is finished send an empty message with the FIN, for Syn, just incrememnt the seqno
   // the syn flag message itself should not have one added to it, but stuff after should
