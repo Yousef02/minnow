@@ -72,7 +72,7 @@ void TCPSender::push( Reader& outbound_stream )
   // bool syn = false;
   Buffer payload;
   TCPSenderMessage toPush;
-  uint64_t localWindowSize = windowSize;
+  // uint64_t localWindowSize = windowSize;
 
 
   uint64_t size = 0;
@@ -115,14 +115,11 @@ void TCPSender::push( Reader& outbound_stream )
 
     bool fin = false;
     if (outbound_stream.is_finished() && seqno_ == outbound_stream.bytes_popped() + 1 
-      && localWindowSize > 0) {
+      && size > 0) {
         fin = true;
         size--;
         seqno_++;  
       }
-
-
-
 
 
     toPush = {Wrap32::wrap(local_seqno, isn_), local_seqno == 0, Buffer(my_buffer), fin};
@@ -158,16 +155,21 @@ TCPSenderMessage TCPSender::send_empty_message() const
 
 void TCPSender::receive( const TCPReceiverMessage& msg )
 {
+  uint64_t ackd = lastAcked;
   windowSize = msg.window_size;
   if (msg.ackno.has_value()) {
-    if (msg.ackno.value().unwrap(isn_, seqno_) > seqno_) {
+    if (msg.ackno.value().unwrap(isn_, seqno_) > seqno_ 
+    || (!outStandingMap.empty() && msg.ackno.value().unwrap(isn_, seqno_) < outStandingMap.begin()->first + outStandingMap.begin()->second.sequence_length())) {
       return;
     }
     lastAcked = msg.ackno.value().unwrap(isn_, seqno_);
     outStandingMap.erase(outStandingMap.begin(), outStandingMap.lower_bound(lastAcked));
-    totalTime = 0;
-    consecutiveRetransmissions = 0;
-    rto = initial_RTO_ms_;
+    if (lastAcked > ackd) {
+      totalTime = 0;
+      consecutiveRetransmissions = 0;
+      rto = initial_RTO_ms_;
+      timerRunning = false;
+    }
   }
 }
 
