@@ -17,6 +17,10 @@ public:
   uint64_t lastAcked = 0;
   uint64_t windowSize = 1;
   uint64_t seqno_ = 0;
+  uint64_t totalTime = 0;
+  uint64_t rto;
+  uint64_t consecutiveRetransmissions = 0;
+  bool timerRunning = false;
   /* Construct TCP sender with given default Retransmission Timeout and possible ISN */
   TCPSender( uint64_t initial_RTO_ms, std::optional<Wrap32> fixed_isn );
 
