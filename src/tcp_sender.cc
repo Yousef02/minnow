@@ -21,12 +21,7 @@ uint64_t TCPSender::sequence_numbers_in_flight() const
   if ( outStandingMap.empty() && pushMap.empty() ) {
     return 0;
   }
-
-  uint64_t outVal = outStandingMap.empty() ? UINT64_MAX : outStandingMap.begin()->first;
-  uint64_t pushVal = pushMap.empty() ? UINT64_MAX : pushMap.begin()->first;
-
-  const uint64_t mini = std::min( outVal, pushVal );
-  return seqno_ - mini;
+  return seqno_ - lastAcked;
 }
 
 uint64_t TCPSender::consecutive_retransmissions() const
@@ -120,7 +115,6 @@ TCPSenderMessage TCPSender::send_empty_message() const
 
 void TCPSender::receive( const TCPReceiverMessage& msg )
 {
-  // uint64_t ackd = lastAcked;
   windowSize = msg.window_size;
   if ( msg.ackno.has_value() ) {
     // If the ackno is greater than the seqno, it is invalid.
@@ -134,6 +128,7 @@ void TCPSender::receive( const TCPReceiverMessage& msg )
     lastAcked = msg.ackno.value().unwrap( isn_, seqno_ );
     outStandingMap.erase( outStandingMap.begin(), outStandingMap.lower_bound( lastAcked ) );
     
+    // What's outsdanding is now acked, so reset the timer.
     totalTime = 0;
     consecutiveRetransmissions = 0;
     rto = initial_RTO_ms_;
@@ -147,7 +142,9 @@ void TCPSender::tick( const size_t ms_since_last_tick )
   timerRunning = true;
   if ( totalTime >= rto ) {
     if ( !outStandingMap.empty() ) {
-      pushMap.insert( *outStandingMap.begin() );
+      auto first_pair = std::move( *outStandingMap.begin() );
+      outStandingMap.erase( outStandingMap.begin() );
+      pushMap.insert( first_pair );
       totalTime = 0;
       if ( windowSize > 0 ) {
         rto *= 2;
