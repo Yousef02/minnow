@@ -13,7 +13,7 @@ void TCPReceiver::receive( TCPSenderMessage message, Reassembler& reassembler, W
     return;
 
   } else {
-    uint64_t abs_seqno = message.seqno.unwrap( isn.value(), inbound_stream.bytes_pushed() ); //Maybe + 1
+    uint64_t abs_seqno = message.seqno.unwrap( isn.value(), inbound_stream.bytes_pushed() ); // Maybe + 1
     // If we are just starting, we need to insert the payload at stream index 0 (same as abs_seqno of SYN)
     if ( message.sequence_length() > 0 && message.SYN ) {
       toinsert = abs_seqno;
@@ -32,7 +32,7 @@ TCPReceiverMessage TCPReceiver::send( const Writer& inbound_stream ) const
   } else if ( isn.has_value() ) {
     ackno = Wrap32::wrap( inbound_stream.bytes_pushed() + 1, isn.value() );
   }
-  uint16_t window_size = inbound_stream.available_capacity() >= UINT16_MAX ? UINT16_MAX
-   : inbound_stream.available_capacity();
+  uint16_t window_size
+    = inbound_stream.available_capacity() >= UINT16_MAX ? UINT16_MAX : inbound_stream.available_capacity();
   return { ackno, window_size };
 }
