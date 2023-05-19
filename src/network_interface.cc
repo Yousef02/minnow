@@ -8,7 +8,7 @@ using namespace std;
 // ethernet_address: Ethernet (what ARP calls "hardware") address of the interface
 // ip_address: IP (what ARP calls "protocol") address of the interface
 NetworkInterface::NetworkInterface( const EthernetAddress& ethernet_address, const Address& ip_address )
-  : ethernet_address_( ethernet_address ), ip_address_( ip_address ), addressMap(), arpReqMap()
+  : ethernet_address_( ethernet_address ), ip_address_( ip_address ), addressMap(), ethernetQueue()
 {
   cerr << "DEBUG: Network interface has Ethernet address " << to_string( ethernet_address_ ) << " and IP address "
        << ip_address.ip() << "\n";
@@ -20,18 +20,54 @@ NetworkInterface::NetworkInterface( const EthernetAddress& ethernet_address, con
 
 // Note: the Address type can be converted to a uint32_t (raw 32-bit IP address) by using the
 // Address::ipv4_numeric() method.
+bool NetworkInterface::ethernetKnown(const Address& next_hop) {
+  if (addressMap.contains(next_hop.ipv4_numeric())) {
+    if (addressMap[next_hop.ipv4_numeric()].ethAddress.has_value()) {
+      return true;
+    }
+  }
+  return false;
+}
+bool NetworkInterface::expired(const Address& next_hop) {
+  if (addressMap.contains(next_hop.ipv4_numeric())) {
+    if (addressMap[next_hop.ipv4_numeric()].expirationTime < globalTime) {
+      return true;
+    }
+  }
+  return false;
+}
+
 void NetworkInterface::send_datagram( const InternetDatagram& dgram, const Address& next_hop )
 {
+
+  // Question: if we do the smart method, does that mean that there is nothing exired in the map?
   if (addressMap.contains(next_hop.ipv4_numeric())) {
-    mappingStruct& mapping = addressMap[next_hop.ipv4_numeric()];
-    mapping.datagramQueue.push(dgram);
-    mapping.expirationTime = globalTime + 30000;
+    if (ethernetKnown(next_hop)) {
+      EthernetFrame frame = 
+        EthernetFrame(EthernetHeader(addressMap[next_hop.ipv4_numeric()].ethAddress.value(), 
+        ethernet_address_, 
+        EthernetHeader::TYPE_IPv4), 
+        serialize(dgram));
+      ethernetQueue.push(frame);
+    } else {
+      EthernetFrame frame = 
+        EthernetFrame(EthernetHeader(ETHERNET_BROADCAST, ethernet_address_,
+        EthernetHeader::TYPE_ARP), serialize(dgram));
+      addressMap[next_hop.ipv4_numeric()].datagramQueue.push(dgram);
+    }
   } else {
-    mappingStruct mapping;
-    mapping.datagramQueue.push(dgram);
-    mapping.expirationTime = globalTime + 30000;
-    addressMap[next_hop.ipv4_numeric()] = mapping;
+    ARPMessage arp; // maybe decompose this into a function
+      arp.opcode = ARPMessage::OPCODE_REQUEST;
+      arp.sender_ethernet_address = ethernet_address_;
+      arp.sender_ip_address = ip_address_.ipv4_numeric();
+      arp.target_ip_address = next_hop.ipv4_numeric();
+    EthernetFrame frame = 
+      EthernetFrame(EthernetHeader(ETHERNET_BROADCAST, ethernet_address_,
+      EthernetHeader::TYPE_ARP), serialize(arp));
+    addressMap[next_hop.ipv4_numeric()].datagramQueue.push(dgram);
+    ethernetQueue.push(frame);
   }
+  
   // if (next_hop.ipv4_numeric() == 0) {
   //   cerr << "DEBUG: Sending datagram to " << next_hop.ip() << " on interface " << ip_address_.ip() << "\n";
   //   EthernetFrame frame = EthernetFrame(ethernet_address_, EthernetAddress::BROADCAST, EtherType::IPV4, dgram.serialize());
@@ -58,5 +94,10 @@ void NetworkInterface::tick( const size_t ms_since_last_tick )
 
 optional<EthernetFrame> NetworkInterface::maybe_send()
 {
+  if (!ethernetQueue.empty()) {
+    EthernetFrame frame = ethernetQueue.front();
+    ethernetQueue.pop();
+    return frame;
+  }
   return {};
 }

@@ -34,25 +34,23 @@
 // the network interface passes it up the stack. If it's an ARP
 // request or reply, the network interface processes the frame
 // and learns or replies as necessary.
-class NetworkInterface
-{
+
+
+
+class NetworkInterface {
 private:
-  
-
-  // Ethernet (known as hardware, network-access, or link-layer) address of the interface
   EthernetAddress ethernet_address_;
-
-  // IP (known as Internet-layer or network-layer) address of the interface
   Address ip_address_;
-
   struct mappingStruct {
-    std::optional EthernetAddress ethAddress;
-    queue<InternetDatagram> datagramQueue;
-    size_t expirationTime;
+    std::queue<InternetDatagram> datagramQueue = {};
+    size_t expirationTime = 0;
+    std::optional<EthernetAddress> ethAddress = {};
   };
-  std::map<uint32_t, mappingStruct> addressMap;
   size_t globalTime = 0;
-
+  std::map<uint32_t, mappingStruct> addressMap;
+  std::queue<EthernetFrame> ethernetQueue;
+  
+  
 public:
   // Construct a network interface with given Ethernet (network-access-layer) and IP (internet-layer)
   // addresses
@@ -76,4 +74,7 @@ public:
 
   // Called periodically when time elapses
   void tick( size_t ms_since_last_tick );
+
+  bool ethernetKnown(const Address& next_hop);
+  bool expired(const Address& next_hop);
 };
