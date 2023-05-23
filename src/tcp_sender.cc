@@ -73,9 +73,9 @@ void TCPSender::push( Reader& outbound_stream )
     }
 
     string my_buffer;
-    uint64_t boundary = min( min( static_cast<uint64_t>( size ),
-                                  static_cast<uint64_t>( outbound_stream.bytes_buffered() ) ),
-                                  static_cast<uint64_t>( TCPConfig::MAX_PAYLOAD_SIZE ) );
+    uint64_t boundary
+      = min( min( static_cast<uint64_t>( size ), static_cast<uint64_t>( outbound_stream.bytes_buffered() ) ),
+             static_cast<uint64_t>( TCPConfig::MAX_PAYLOAD_SIZE ) );
 
     // Inner while loop to make the message payload as large as possible.
     while ( my_buffer.length() < boundary ) {
@@ -127,7 +127,7 @@ void TCPSender::receive( const TCPReceiverMessage& msg )
     }
     lastAcked = msg.ackno.value().unwrap( isn_, seqno_ );
     outStandingMap.erase( outStandingMap.begin(), outStandingMap.lower_bound( lastAcked ) );
-    
+
     // What's outsdanding is now acked, so reset the timer.
     totalTime = 0;
     consecutiveRetransmissions = 0;

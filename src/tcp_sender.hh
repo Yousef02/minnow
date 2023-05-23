@@ -12,16 +12,16 @@ class TCPSender
   uint64_t initial_RTO_ms_;
 
 public:
-
-  std::map<uint64_t, TCPSenderMessage> pushMap;           // Map of absolute seqnos and TCPSenderMessages to be pushed
-  std::map<uint64_t, TCPSenderMessage> outStandingMap;    // Map of absolute seqnos and TCPSenderMessages that are outstanding
-  uint64_t lastAcked = 0;                                 // Last acked sequence number
-  uint64_t windowSize = 1;                                // Window size of the receiver
-  uint64_t seqno_ = 0;                                    // Current sequence number
-  uint64_t totalTime = 0;                                 // Total time since last tick
-  uint64_t rto;                                           // Retransmission timeout
-  uint64_t consecutiveRetransmissions = 0;                // Consecutive retransmissions
-  bool timerRunning = false;                              // Is the timer running?
+  std::map<uint64_t, TCPSenderMessage> pushMap; // Map of absolute seqnos and TCPSenderMessages to be pushed
+  std::map<uint64_t, TCPSenderMessage>
+    outStandingMap;                        // Map of absolute seqnos and TCPSenderMessages that are outstanding
+  uint64_t lastAcked = 0;                  // Last acked sequence number
+  uint64_t windowSize = 1;                 // Window size of the receiver
+  uint64_t seqno_ = 0;                     // Current sequence number
+  uint64_t totalTime = 0;                  // Total time since last tick
+  uint64_t rto;                            // Retransmission timeout
+  uint64_t consecutiveRetransmissions = 0; // Consecutive retransmissions
+  bool timerRunning = false;               // Is the timer running?
 
   /* Construct TCP sender with given default Retransmission Timeout and possible ISN */
   TCPSender( uint64_t initial_RTO_ms, std::optional<Wrap32> fixed_isn );
