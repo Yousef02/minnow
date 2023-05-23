@@ -37,6 +37,18 @@ bool NetworkInterface::expired(const Address& next_hop) {
   return false;
 }
 
+EthernetFrame prepArpFrame(const Address& next_hop, const EthernetAddress& ethernet_address, const Address& ip_address, const EthernetAddress& targetAddress ,const uint16_t arpType) {
+  ARPMessage arp; // maybe decompose this into a function
+  arp.opcode = arpType;
+  arp.sender_ethernet_address = ethernet_address;
+  arp.sender_ip_address = ip_address.ipv4_numeric();
+  arp.target_ip_address = next_hop.ipv4_numeric();
+  EthernetFrame frame = 
+    EthernetFrame(EthernetHeader(targetAddress, ethernet_address,
+    EthernetHeader::TYPE_ARP), serialize(arp));
+  return frame;
+}
+
 void NetworkInterface::send_datagram( const InternetDatagram& dgram, const Address& next_hop )
 {
 
@@ -49,11 +61,18 @@ void NetworkInterface::send_datagram( const InternetDatagram& dgram, const Addre
         EthernetHeader::TYPE_IPv4), 
         serialize(dgram));
       ethernetQueue.push(frame);
-    } else {
+    } else if (expired(next_hop)) {
+      ARPMessage arp; // maybe decompose this into a function
+      arp.opcode = ARPMessage::OPCODE_REQUEST;
+      arp.sender_ethernet_address = ethernet_address_;
+      arp.sender_ip_address = ip_address_.ipv4_numeric();
+      arp.target_ip_address = next_hop.ipv4_numeric();
       EthernetFrame frame = 
         EthernetFrame(EthernetHeader(ETHERNET_BROADCAST, ethernet_address_,
-        EthernetHeader::TYPE_ARP), serialize(dgram));
+        EthernetHeader::TYPE_ARP), serialize(arp));
       addressMap[next_hop.ipv4_numeric()].datagramQueue.push(dgram);
+      addressMap[next_hop.ipv4_numeric()].expirationTime = globalTime + 5000;
+      ethernetQueue.push(frame);
     }
   } else {
     ARPMessage arp; // maybe decompose this into a function
@@ -65,31 +84,72 @@ void NetworkInterface::send_datagram( const InternetDatagram& dgram, const Addre
       EthernetFrame(EthernetHeader(ETHERNET_BROADCAST, ethernet_address_,
       EthernetHeader::TYPE_ARP), serialize(arp));
     addressMap[next_hop.ipv4_numeric()].datagramQueue.push(dgram);
+    addressMap[next_hop.ipv4_numeric()].expirationTime = globalTime + 5000;
     ethernetQueue.push(frame);
   }
-  
-  // if (next_hop.ipv4_numeric() == 0) {
-  //   cerr << "DEBUG: Sending datagram to " << next_hop.ip() << " on interface " << ip_address_.ip() << "\n";
-  //   EthernetFrame frame = EthernetFrame(ethernet_address_, EthernetAddress::BROADCAST, EtherType::IPV4, dgram.serialize());
-  //   send_frame(frame, next_hop);
-  // } else {
-  //   cerr << "DEBUG: Sending datagram to " << next_hop.ip() << " on interface " << ip_address_.ip() << "\n";
-  //   EthernetFrame frame = EthernetFrame(ethernet_address_, EthernetAddress::BROADCAST, EtherType::ARP, dgram.serialize());
-  //   send_frame(frame, next_hop);
-  // }
+
 }
 
 // frame: the incoming Ethernet frame
 optional<InternetDatagram> NetworkInterface::recv_frame( const EthernetFrame& frame )
 {
-  (void)frame;
+
+  if (frame.header.type == EthernetHeader::TYPE_IPv4) {
+    InternetDatagram dgram;
+    bool ipValid = parse(dgram, frame.payload);
+    // check if the ethernet address is the same as the one we have or if it is broadcast
+    if (ipValid && (frame.header.dst == ethernet_address_ || frame.header.dst == ETHERNET_BROADCAST)) {
+      return dgram;
+    } else {
+      return {};
+    }
+  } else if (frame.header.type == EthernetHeader::TYPE_ARP) {
+    ARPMessage arp;
+    bool parseValid = parse(arp, frame.payload);
+    addressMap[arp.sender_ip_address].ethAddress = arp.sender_ethernet_address;
+    addressMap[arp.sender_ip_address].expirationTime = globalTime + 30000;
+    while (!addressMap[arp.sender_ip_address].datagramQueue.empty()) {
+      InternetDatagram dgram = addressMap[arp.sender_ip_address].datagramQueue.front();
+      addressMap[arp.sender_ip_address].datagramQueue.pop();
+      send_datagram(dgram, Address::from_ipv4_numeric(arp.sender_ip_address));
+    }
+    if (parseValid && arp.opcode == ARPMessage::OPCODE_REQUEST && (arp.target_ip_address == ip_address_.ipv4_numeric() || arp.target_ip_address == 0)) {
+      // if it’s an ARP request asking for our IP address, send an appropriate ARP reply.
+      ARPMessage arpReply;
+      arpReply.opcode = ARPMessage::OPCODE_REPLY;
+      arpReply.sender_ethernet_address = ethernet_address_;
+      arpReply.sender_ip_address = ip_address_.ipv4_numeric();
+      arpReply.target_ethernet_address = arp.sender_ethernet_address;
+      arpReply.target_ip_address = arp.sender_ip_address;
+      EthernetFrame replyFrame = 
+        EthernetFrame(EthernetHeader(arpReply.target_ethernet_address, ethernet_address_,
+        EthernetHeader::TYPE_ARP), serialize(arpReply));
+      ethernetQueue.push(replyFrame);
+      
+    // } else if (arp.opcode == ARPMessage::OPCODE_REPLY) {
+    //   addressMap[arp.sender_ip_address].ethAddress = arp.sender_ethernet_address;
+    //   addressMap[arp.sender_ip_address].expirationTime = globalTime + 30000;
+    //   while (!addressMap[arp.sender_ip_address].datagramQueue.empty()) {
+    //     InternetDatagram dgram = addressMap[arp.sender_ip_address].datagramQueue.front();
+    //     addressMap[arp.sender_ip_address].datagramQueue.pop();
+    //     send_datagram(dgram, Address::from_ipv4_numeric(arp.sender_ip_address));
+    //   }
+    }
+  }
   return {};
 }
 
 // ms_since_last_tick: the number of milliseconds since the last call to this method
 void NetworkInterface::tick( const size_t ms_since_last_tick )
 {
-  (void)ms_since_last_tick;
+  globalTime += ms_since_last_tick;
+  for (auto it = addressMap.begin(); it != addressMap.end();) {
+    if (it->second.ethAddress.has_value() && it->second.expirationTime < globalTime) {
+      it = addressMap.erase(it);
+    } else {
+      it++;
+    }
+  }
 }
 
 optional<EthernetFrame> NetworkInterface::maybe_send()
