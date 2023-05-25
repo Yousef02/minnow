@@ -58,9 +58,8 @@ EthernetFrame NetworkInterface::prepArpFrame( const uint32_t& next_hop,
   if ( arpType == ARPMessage::OPCODE_REPLY ) {
     arp.target_ethernet_address = targetAddress;
   }
-  EthernetFrame frame = EthernetFrame( EthernetHeader( targetAddress, ethernet_address, EthernetHeader::TYPE_ARP ),
-                                       serialize( arp ) );
-  return frame;
+
+  return { { targetAddress, ethernet_address, EthernetHeader::TYPE_ARP }, serialize( arp ) };
 }
 
 // Helper function to send pending datagrams once we get the ethernet address of the next hop

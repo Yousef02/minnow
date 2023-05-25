@@ -81,4 +81,18 @@ public:
   // route with the longest prefix_length that matches the datagram's
   // destination address.
   void route();
+
+private:
+  // A routing table entry
+  struct Route
+  {
+    uint32_t route_prefix;
+    uint8_t prefix_length;
+    std::optional<Address> next_hop;
+    size_t interface_num;
+  };
+
+  // The router's routing table
+  std::vector<Route> routes_ {};
+
 };
