@@ -23,48 +23,49 @@ void Router::add_route( const uint32_t route_prefix,
   routes_.push_back( { route_prefix, prefix_length, next_hop, interface_num } );
 }
 
-void Router::route() {
+void Router::route()
+{
 
-  for (auto& interface : interfaces_) {
+  for ( auto& interface : interfaces_ ) {
     auto datagram = interface.maybe_receive();
-    while (datagram.has_value()) {
+    while ( datagram.has_value() ) {
       auto route = routes_.end();
       uint8_t max_prefix_length = 0;
-      for (auto it = routes_.begin(); it != routes_.end(); it++) {
+      for ( auto it = routes_.begin(); it != routes_.end(); it++ ) {
         // check if the length is 0 bits, because shifting by 32 is undefined behavior
-        if (it->prefix_length == 0) {
+        if ( it->prefix_length == 0 ) {
           route = it;
           max_prefix_length = 0;
         } else {
           // check if the prefix matches the datagram's destination address
-          if ((it->route_prefix >> (32 - it->prefix_length)) == (datagram->header.dst >> (32 - it->prefix_length))) {
+          if ( ( it->route_prefix >> ( 32 - it->prefix_length ) )
+               == ( datagram->header.dst >> ( 32 - it->prefix_length ) ) ) {
             // if the prefix length is longer than the current max, update the max and the route
-            if (it->prefix_length > max_prefix_length) {
+            if ( it->prefix_length > max_prefix_length ) {
               max_prefix_length = it->prefix_length;
               route = it;
             }
           }
         }
       }
-      if (route != routes_.end()) {
+      if ( route != routes_.end() ) {
         // if the ttl is 0 or is going to hit 0, drop the datagram. Otherwise, decrement the ttl
-        if (datagram->header.ttl == 0 || datagram->header.ttl == 1) {
+        if ( datagram->header.ttl <= 1 ) {
           datagram = interface.maybe_receive();
           continue;
         } else {
           datagram->header.ttl--;
           datagram->header.compute_checksum();
         }
-          
-        if (route->next_hop.has_value()) {
-          interfaces_[route->interface_num].send_datagram(*datagram, *route->next_hop);
+
+        if ( route->next_hop.has_value() ) {
+          interfaces_[route->interface_num].send_datagram( *datagram, *route->next_hop );
         } else {
-          interfaces_[route->interface_num].send_datagram(*datagram, Address::from_ipv4_numeric(datagram->header.dst));
+          interfaces_[route->interface_num].send_datagram( *datagram,
+                                                           Address::from_ipv4_numeric( datagram->header.dst ) );
         }
       }
       datagram = interface.maybe_receive();
-      
     }
   }
 }
-

@@ -91,9 +91,9 @@ void NetworkInterface::send_datagram( const InternetDatagram& dgram, const Addre
 
   } else {
     if ( ethernetKnown( next_hop ) ) {
-      EthernetFrame frame = EthernetFrame(
-        EthernetHeader( addressMap[next_hop_ip].ethAddress.value(), ethernet_address_, EthernetHeader::TYPE_IPv4 ),
-        serialize( dgram ) );
+      EthernetFrame frame
+        = { { addressMap[next_hop_ip].ethAddress.value(), ethernet_address_, EthernetHeader::TYPE_IPv4 },
+            serialize( dgram ) };
       ethernetQueue.push( frame );
     }
   }

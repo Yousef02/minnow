@@ -94,5 +94,4 @@ private:
 
   // The router's routing table
   std::vector<Route> routes_ {};
-
 };
