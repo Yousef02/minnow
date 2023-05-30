@@ -39,25 +39,26 @@ class NetworkInterface
 private:
   EthernetAddress ethernet_address_;
   Address ip_address_;
+  // A struct to hold the datagram queue, expiration time, and mapped ethernet address
   struct mappingStruct
   {
     std::queue<InternetDatagram> datagramQueue = {};
     size_t expirationTime = 0;
     std::optional<EthernetAddress> ethAddress = {};
   };
-  size_t globalTime = 0;
-  std::map<uint32_t, mappingStruct> addressMap;
-  std::queue<EthernetFrame> ethernetQueue;
+  size_t globalTime = 0;                                // Time variable to keep track of when to expire mappings
+  std::map<uint32_t, mappingStruct> addressMap;         // Map to hold the mappings
+  std::queue<EthernetFrame> ethernetQueue;              // Queue to hold the ethernet frames ready to send
 
   // Helper functions
-  bool ethernetKnown( const Address& next_hop );
-  bool expired( const Address& next_hop );
-  EthernetFrame prepArpFrame( const uint32_t& next_hop,
+  bool ethernetKnown( const Address& next_hop );        // Check if we know the ethernet address or if it is an ARP request
+  bool expired( const Address& next_hop );              // Check if the mapping has expired
+  EthernetFrame prepArpFrame( const uint32_t& next_hop, // Prepare an ARP frame
                               const EthernetAddress& ethernet_address,
                               const Address& ip_address,
                               const EthernetAddress& targetAddress,
                               const uint16_t arpType );
-  void sendPendingDgrams( const uint32_t& next_hop );
+  void sendPendingDgrams( const uint32_t& next_hop );   // Send pending datagrams once we get the ethernet address
 
 public:
   // Construct a network interface with given Ethernet (network-access-layer) and IP (internet-layer)
