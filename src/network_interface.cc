@@ -108,9 +108,7 @@ optional<InternetDatagram> NetworkInterface::recv_frame( const EthernetFrame& fr
     // check if the ethernet address is the same as the one we have or if it is broadcast
     if ( ipValid && ( frame.header.dst == ethernet_address_ || frame.header.dst == ETHERNET_BROADCAST ) ) {
       return dgram;
-    } else {
-      return {};
-    }
+    } 
   } else if ( frame.header.type == EthernetHeader::TYPE_ARP ) {
     ARPMessage arp;
     bool parseValid = parse( arp, frame.payload );
